@@ -1,4 +1,4 @@
-# Asset Management
+<img src="https://raw.githubusercontent.com/IsaiahAnson/asset-management/main/docs/banner.svg" width="100%" alt="Asset Management, an IT tool by Isaiah Anson. Who holds every asset, and who approved it. Next.js + PostgreSQL, Audit log on every write, Demo data only.">
 
 [![CI](https://github.com/IsaiahAnson/asset-management/actions/workflows/ci.yml/badge.svg)](https://github.com/IsaiahAnson/asset-management/actions/workflows/ci.yml)
 

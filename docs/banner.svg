@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 320" width="960" height="320" role="img" aria-label="Asset Management, an IT tool by Isaiah Anson. Who holds every asset, and who approved it. Next.js + PostgreSQL, Audit log on every write, Demo data only.">
+<title>Asset Management, an IT tool by Isaiah Anson. Who holds every asset, and who approved it. Next.js + PostgreSQL, Audit log on every write, Demo data only.</title>
+<style>
+@keyframes in{from{opacity:0}to{opacity:1}}
+@keyframes lit{from{opacity:.3}to{opacity:1}}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.in{animation:in .45s ease both}
+.lit{animation:lit .45s ease both}
+.chip{animation:rise .5s ease 1.9s both}
+.halo{animation:pulse 3.4s ease-in-out infinite}
+.beat{animation:pulse 2.4s ease-in-out infinite}
+.grow{transform-box:fill-box;transform-origin:0 50%;animation:grow .7s cubic-bezier(.3,.7,.2,1) both}
+@media (prefers-reduced-motion:reduce){.in,.lit,.chip,.halo,.beat,.grow{animation:none}}
+</style>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0c1019"/><stop offset="0.55" stop-color="#12182d"/><stop offset="1" stop-color="#1a2148"/></linearGradient>
+<linearGradient id="tile" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#141a30"/><stop offset="1" stop-color="#232d5e"/></linearGradient>
+<radialGradient id="g1" cx="88" cy="86" r="330" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#7fa8ff" stop-opacity="0.2"/><stop offset="1" stop-color="#7fa8ff" stop-opacity="0"/></radialGradient>
+<radialGradient id="g2" cx="900" cy="340" r="340" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#6366f1" stop-opacity="0.3"/><stop offset="1" stop-color="#6366f1" stop-opacity="0"/></radialGradient>
+<radialGradient id="halo" cx="88" cy="86" r="62" gradientUnits="userSpaceOnUse"><stop offset="0.45" stop-color="#7fa8ff" stop-opacity="0.42"/><stop offset="1" stop-color="#7fa8ff" stop-opacity="0"/></radialGradient>
+<pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1" fill="#ffffff" fill-opacity="0.5"/></pattern>
+<linearGradient id="fade" x1="0" y1="0" x2="1" y2="0"><stop offset="0.35" stop-color="#ffffff" stop-opacity="0"/><stop offset="1" stop-color="#ffffff" stop-opacity="0.2"/></linearGradient>
+<mask id="m"><rect width="960" height="320" fill="url(#fade)"/></mask>
+<clipPath id="clip"><rect width="960" height="320" rx="20"/></clipPath>
+
+</defs>
+<g clip-path="url(#clip)">
+<rect width="960" height="320" fill="url(#bg)"/>
+<rect width="960" height="320" fill="url(#dots)" mask="url(#m)"/>
+<rect width="960" height="320" fill="url(#g1)"/>
+<rect width="960" height="320" fill="url(#g2)"/>
+</g>
+<rect x="0.5" y="0.5" width="959" height="319" rx="19.5" fill="none" stroke="#ffffff" stroke-opacity="0.1"/>
+<g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
+<circle class="halo" cx="88" cy="86" r="62" fill="url(#halo)"/>
+<rect x="56" y="54" width="64" height="64" rx="16" fill="url(#tile)" stroke="#7fa8ff" stroke-opacity="0.5" stroke-width="1.5"/><g fill="none" stroke="#7fa8ff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="70" y="72" width="36" height="28" rx="6"/><path d="M78 78 v9" stroke-width="2.4"/><path d="M82 78 v9" stroke-width="1.4"/><path d="M85.5 78 v9" stroke-width="2.4"/><path d="M90 78 v9" stroke-width="1.4"/><path d="M93.5 78 v9" stroke-width="2.4"/><path d="M98 78 v9" stroke-width="1.4"/><path d="M78 93 h20" stroke-width="1.6"/></g>
+<text x="137" y="82" font-size="12.5" font-weight="700" letter-spacing="2.2" fill="#7fa8ff">IT TOOL</text>
+<text x="137" y="104" font-size="14" fill="#9ea6ba">by Isaiah Anson</text>
+<text x="55" y="182" font-size="46" font-weight="700" letter-spacing="-0.6" fill="#f4f6fb">Asset Management</text>
+<text x="57" y="217" font-size="20" fill="#d3d8e6">Who holds every asset, and who approved it.</text>
+<rect x="56.5" y="242.5" width="152" height="25" rx="12.5" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.18"/><text x="132.5" y="259.3" font-size="13" fill="#d3d8e6" text-anchor="middle">Next.js + PostgreSQL</text>
+<rect x="217.5" y="242.5" width="169" height="25" rx="12.5" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.18"/><text x="302" y="259.3" font-size="13" fill="#d3d8e6" text-anchor="middle">Audit log on every write</text>
+<rect x="395.5" y="242.5" width="122" height="25" rx="12.5" fill="#ffffff" fill-opacity="0.04" stroke="#ffffff" stroke-opacity="0.18"/><text x="456.5" y="259.3" font-size="13" fill="#d3d8e6" text-anchor="middle">Demo data only</text>
+<rect x="600" y="42" width="312" height="236" rx="14" fill="#ffffff" fill-opacity="0.05" stroke="#ffffff" stroke-opacity="0.13"/>
+<text x="618" y="66" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" fill="#9ea6ba">NWA-CMP-10482</text>
+<rect x="830.5" y="51.5" width="63" height="20" rx="10" fill="#7fa8ff" fill-opacity="0.16" stroke="#7fa8ff" stroke-opacity="0.5"/>
+<text x="862" y="65.5" font-size="11.5" font-weight="600" fill="#f4f6fb" text-anchor="middle">available</text>
+<path d="M600 80 H912" stroke="#ffffff" stroke-opacity="0.1"/>
+<path d="M627 98 V242" stroke="#ffffff" stroke-opacity="0.16" stroke-width="1.5"/>
+<g class="in" style="animation-delay:0.50s"><circle cx="627" cy="98" r="5" fill="#12182d" stroke="#7fa8ff" stroke-width="1.8"/><circle cx="627" cy="98" r="2" fill="#7fa8ff"/><text x="646" y="103" font-size="14" fill="#d3d8e6">Issued</text><text x="894" y="103" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#7b8398" text-anchor="end">issue</text></g>
+<g class="in" style="animation-delay:0.75s"><circle cx="627" cy="134" r="5" fill="#12182d" stroke="#7fa8ff" stroke-width="1.8"/><circle cx="627" cy="134" r="2" fill="#7fa8ff"/><text x="646" y="139" font-size="14" fill="#d3d8e6">Transfer requested</text><text x="894" y="139" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#7b8398" text-anchor="end">pending</text></g>
+<g class="in" style="animation-delay:1.00s"><circle cx="627" cy="170" r="5" fill="#12182d" stroke="#7fa8ff" stroke-width="1.8"/><circle cx="627" cy="170" r="2" fill="#7fa8ff"/><text x="646" y="175" font-size="14" fill="#d3d8e6">Transfer approved</text><text x="894" y="175" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#7b8398" text-anchor="end">approved</text></g>
+<g class="in" style="animation-delay:1.25s"><circle cx="627" cy="206" r="5" fill="#12182d" stroke="#7fa8ff" stroke-width="1.8"/><circle cx="627" cy="206" r="2" fill="#7fa8ff"/><text x="646" y="211" font-size="14" fill="#d3d8e6">Custody transferred</text><text x="894" y="211" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#7b8398" text-anchor="end">transfer</text></g>
+<g class="in" style="animation-delay:1.50s"><circle cx="627" cy="242" r="5" fill="#12182d" stroke="#7fa8ff" stroke-width="1.8"/><circle cx="627" cy="242" r="2" fill="#7fa8ff"/><text x="646" y="247" font-size="14" fill="#d3d8e6">Returned</text><text x="894" y="247" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="11.5" fill="#7b8398" text-anchor="end">return</text></g>
+<g class="chip"><rect x="711" y="270" width="217" height="28" rx="14" fill="#0c1019" stroke="#7fa8ff" stroke-opacity="0.6"/><text x="819.5" y="288.5" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace" font-size="12.5" font-weight="700" fill="#7fa8ff" text-anchor="middle">5 changes · 5 audit-log rows</text></g>
+</g>
+</svg>
