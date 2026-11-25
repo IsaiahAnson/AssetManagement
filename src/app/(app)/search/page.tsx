@@ -2,6 +2,7 @@ import Link from "next/link";
 import { StatusTag } from "@/components/StatusTag";
 import { statusLabel, statusTone } from "@/lib/assets";
 import { searchAll } from "@/lib/search";
+import { actingUserHasFirearmAccess } from "@/lib/authz";
 
 export default async function SearchPage({
   searchParams
@@ -9,7 +10,9 @@ export default async function SearchPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const q = (await searchParams).q?.trim() ?? "";
-  const results = q ? await searchAll(q) : { shortcuts: [], assets: [], people: [] };
+  const results = q
+    ? await searchAll(q, await actingUserHasFirearmAccess())
+    : { shortcuts: [], assets: [], people: [] };
   const total = results.shortcuts.length + results.assets.length + results.people.length;
 
   return (

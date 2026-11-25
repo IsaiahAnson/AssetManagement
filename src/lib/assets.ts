@@ -1,5 +1,5 @@
 import { getPool } from "@/lib/db";
-import { writeAuditLog } from "@/lib/audit";
+import { writeAuditLog, resolveActor } from "@/lib/audit";
 import { setAssetCustomValues } from "@/lib/custom-fields";
 
 export type ComputerAssetRow = {
@@ -264,26 +264,9 @@ export async function listUsers(): Promise<UserOption[]> {
   return result.rows.map((r) => ({ id: r.id, displayName: r.display_name }));
 }
 
-// Resolves the acting user. Real PIV/CAC auth is out of scope for the
-// prototype; until session auth lands we attribute actions to a seeded
-// Asset Manager (falling back to any active user).
-async function resolveActor(
-  client: import("pg").PoolClient
-): Promise<{ id: string; label: string }> {
-  const result = await client.query<{ id: string; display_name: string }>(
-    `SELECT u.id, u.display_name
-       FROM app_users u
-       LEFT JOIN user_roles ur ON ur.user_id = u.id
-       LEFT JOIN roles r ON r.id = ur.role_id
-      WHERE u.active = true
-      ORDER BY (r.code = 'asset_manager') DESC NULLS LAST, u.display_name
-      LIMIT 1`
-  );
-  if (result.rowCount === 0) {
-    throw new Error("No active user available to attribute the action to.");
-  }
-  return { id: result.rows[0].id, label: result.rows[0].display_name };
-}
+// Firearms and body armor have their own module with coordinator and
+// verification checks, so the generic asset writes below refuse them.
+const SENSITIVE_ASSET_ERROR = "Use the Firearms module for high-sensitivity assets.";
 
 // Reassigns custody: updates the asset, records a custody_events row, and
 // writes the audit entry, all in one transaction.
@@ -297,12 +280,22 @@ export async function transferCustody(
   try {
     await client.query("BEGIN");
 
-    const asset = await client.query<{ id: string; current_custodian_id: string | null }>(
-      "SELECT id, current_custodian_id FROM assets WHERE asset_tag = $1 FOR UPDATE",
+    const asset = await client.query<{
+      id: string; current_custodian_id: string | null; status: string; sensitive: boolean;
+    }>(
+      `SELECT a.id, a.current_custodian_id, a.status, (a.high_sensitivity OR c.high_sensitivity) AS sensitive
+         FROM assets a JOIN asset_categories c ON c.id = a.category_id
+        WHERE a.asset_tag = $1 FOR UPDATE OF a`,
       [assetTag]
     );
     if (asset.rowCount === 0) {
       throw new Error(`Asset ${assetTag} not found.`);
+    }
+    if (asset.rows[0].sensitive) {
+      throw new Error(SENSITIVE_ASSET_ERROR);
+    }
+    if (asset.rows[0].status === "retired") {
+      throw new Error(`Asset ${assetTag} is retired and cannot be issued.`);
     }
 
     const fromUserId = asset.rows[0].current_custodian_id;
@@ -351,12 +344,17 @@ export async function checkInAsset(assetTag: string): Promise<void> {
   try {
     await client.query("BEGIN");
 
-    const asset = await client.query<{ id: string; current_custodian_id: string | null }>(
-      "SELECT id, current_custodian_id FROM assets WHERE asset_tag = $1 FOR UPDATE",
+    const asset = await client.query<{ id: string; current_custodian_id: string | null; sensitive: boolean }>(
+      `SELECT a.id, a.current_custodian_id, (a.high_sensitivity OR c.high_sensitivity) AS sensitive
+         FROM assets a JOIN asset_categories c ON c.id = a.category_id
+        WHERE a.asset_tag = $1 FOR UPDATE OF a`,
       [assetTag]
     );
     if (asset.rowCount === 0) {
       throw new Error(`Asset ${assetTag} not found.`);
+    }
+    if (asset.rows[0].sensitive) {
+      throw new Error(SENSITIVE_ASSET_ERROR);
     }
     if (asset.rows[0].current_custodian_id === null) {
       throw new Error(`Asset ${assetTag} is not currently checked out.`);
@@ -398,7 +396,7 @@ export async function checkInAsset(assetTag: string): Promise<void> {
   }
 }
 
-// Retires an asset: status -> disposed, records the disposition custody event
+// Retires an asset: status -> retired, records the disposition custody event
 // and the audit entry in one transaction.
 export async function dispositionAsset(assetTag: string): Promise<void> {
   const pool = getPool();
@@ -406,14 +404,22 @@ export async function dispositionAsset(assetTag: string): Promise<void> {
   try {
     await client.query("BEGIN");
 
-    const asset = await client.query<{ id: string; current_custodian_id: string | null; status: string }>(
-      "SELECT id, current_custodian_id, status FROM assets WHERE asset_tag = $1 FOR UPDATE",
+    const asset = await client.query<{
+      id: string; current_custodian_id: string | null; status: string; sensitive: boolean;
+    }>(
+      `SELECT a.id, a.current_custodian_id, a.status, (a.high_sensitivity OR c.high_sensitivity) AS sensitive
+         FROM assets a JOIN asset_categories c ON c.id = a.category_id
+        WHERE a.asset_tag = $1 FOR UPDATE OF a`,
       [assetTag]
     );
     if (asset.rowCount === 0) {
       throw new Error(`Asset ${assetTag} not found.`);
     }
-    if (asset.rows[0].status === "disposed") {
+    if (asset.rows[0].sensitive) {
+      throw new Error(SENSITIVE_ASSET_ERROR);
+    }
+    // Disposition sets status to 'retired' (the schema has no 'disposed').
+    if (asset.rows[0].status === "retired") {
       throw new Error(`Asset ${assetTag} is already dispositioned.`);
     }
 
@@ -563,11 +569,14 @@ export async function updateComputerAsset(id: string, input: UpdateComputerInput
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const asset = await client.query<{ asset_tag: string }>(
-      "SELECT asset_tag FROM assets WHERE id = $1 FOR UPDATE",
+    const asset = await client.query<{ asset_tag: string; sensitive: boolean }>(
+      `SELECT a.asset_tag, (a.high_sensitivity OR c.high_sensitivity) AS sensitive
+         FROM assets a JOIN asset_categories c ON c.id = a.category_id
+        WHERE a.id = $1 FOR UPDATE OF a`,
       [id]
     );
     if (asset.rowCount === 0) throw new Error("Asset not found.");
+    if (asset.rows[0].sensitive) throw new Error(SENSITIVE_ASSET_ERROR);
     const actor = await resolveActor(client);
     await client.query(
       "UPDATE assets SET model = $1, serial_number = $2, office = $3 WHERE id = $4",

@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-asset_management}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-asset_management_dev_password}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
@@ -26,8 +26,12 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://asset_management:asset_management_dev_password@postgres:5432/asset_management}
+      # Built from the POSTGRES_* values, not DATABASE_URL: the .env copy of
+      # DATABASE_URL points at localhost, which is wrong inside this container.
+      DATABASE_URL: postgresql://${POSTGRES_USER:-asset_management}:${POSTGRES_PASSWORD:-asset_management_dev_password}@postgres:5432/${POSTGRES_DB:-asset_management}
       NEXT_PUBLIC_APP_ENV: ${NEXT_PUBLIC_APP_ENV:-local}
+      # Required: the container runs in production mode, which has no dev default.
+      SESSION_SECRET: ${SESSION_SECRET:-}
     ports:
       - "${APP_PORT:-3000}:3000"
 

@@ -10,6 +10,7 @@ import {
   type BarDatum
 } from "@/lib/dashboard";
 import { listAuditEntries } from "@/lib/audit";
+import { actingUserHasFirearmAccess } from "@/lib/authz";
 
 function BarChart({ data }: { data: BarDatum[] }) {
   const max = Math.max(1, ...data.map((d) => d.value));
@@ -47,7 +48,7 @@ export default async function DashboardPage() {
     getAssetsByStatus(),
     getModuleInventory(),
     getAttentionItems(),
-    listAuditEntries({}, 8)
+    actingUserHasFirearmAccess().then((access) => listAuditEntries({}, 8, access))
   ]);
   return (
     <div className="usa-page">

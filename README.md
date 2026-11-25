@@ -39,8 +39,9 @@ All organizations, people, asset tags and serial numbers in the seed data are fi
 - **Audit log** with CSV export.
 - **HR webhook receiver** (`POST /api/integrations/hr/intake`): HMAC-SHA256 signature
   verification and idempotency-key dedupe, plus a simulated HRIS sync panel.
-- **Role-based access**: admin, approver, asset manager, office-scoped asset manager,
-  firearms coordinators, and read-only, with a development login picker for switching roles.
+- **Role-based access**: admin, approver, asset manager, office asset manager, firearms
+  coordinators, and read-only, with a demo login picker for switching roles. See
+  [Security model](#security-model) for what each check covers.
 
 ## Stack
 
@@ -61,6 +62,10 @@ npm run dev          # http://localhost:3000
 
 Sign in from the `/login` picker as any seeded user. Each one has a different role. The featured
 demo asset is `NWA-CMP-10001`.
+
+`npm run dev` signs the login cookie with a built-in dev secret. `next start` and Docker run in
+production mode and need `SESSION_SECRET` set (see `.env.example`); without it signing in and every
+page behind the login return an error.
 
 To start over with a clean seeded database:
 
@@ -83,24 +88,64 @@ DATABASE_URL=... npm test # also runs the database integration tests
 ```
 
 GitHub Actions runs lint, type checking, the full test suite against Postgres, and a
-production build on every push.
+production build on every pull request and every push to `main`.
 
 Integration tests skip automatically when `DATABASE_URL` is not set.
 
 ## Docker
 
 ```bash
+cp .env.example .env   # then set POSTGRES_PASSWORD and SESSION_SECRET
 docker compose up --build
 ```
 
+The app container builds its `DATABASE_URL` from the `POSTGRES_*` values and connects to the
+`postgres` service. The `DATABASE_URL` line in `.env` is only for `npm run dev` and tests on the
+host. Postgres is published on `127.0.0.1` only. The full `docker compose up --build` path has not
+been re-run since these changes; `npm run build` with no database was checked.
+
 If Docker runs behind SSL inspection, put the inspecting root CA in `docker/certs/` as a `.crt`
 file, or build with `--build-arg NPM_CONFIG_STRICT_SSL=false` for local use only.
+
+## Security model
+
+The login is a demo picker, not real authentication. There is no password. You pick one of the
+seeded role accounts and the app remembers that choice in a cookie. Production sign-in (SSO or
+PIV/CAC) is not built.
+
+What the code does enforce:
+
+- **Signed session cookie.** The cookie holds a user id plus an HMAC-SHA256 signature made with
+  `SESSION_SECRET`. It is `httpOnly`. A missing, edited or malformed cookie counts as signed out.
+  The login form only accepts ids from the picker list.
+- **No session, no access.** `src/proxy.ts` sends every page request without a valid cookie to
+  `/login`. With nobody signed in, writes are refused and nothing is attributed to a default user.
+- **Write checks in server actions.** Read-only users cannot change anything. Firearms changes need
+  a firearms coordinator or admin role. Approving or denying on the Approvals page needs the
+  Approver or Admin role. Custom fields and reference data are admin only.
+- **Firearms visibility.** Users without the firearms access flag do not see firearms or body
+  armor in search, on asset or person pages, or in the audit log and its CSV export. The generic
+  asset actions (check out, check in, transfer, dispose, edit) refuse these items; they go through
+  the Firearms module.
+- **Route handlers.** The audit CSV export needs a signed-in user. The simulated HRIS sync `POST`
+  needs write access. The HR webhook checks its own HMAC signature. The health check returns a
+  generic error message.
+
+Not enforced yet:
+
+- Office scoping for the office asset manager role.
+- An approver-only check on the Requests page (any user with write access can decide a request
+  there).
+- Firearms filtering on the manufacturer and maintenance lists and on dashboard counts.
+- Firearms filtering on approval summaries (the Approvals page shows the seeded firearm issuance
+  requests to every signed-in user) and on asset counts on the People and Reference pages.
 
 ## Project layout
 
 ```text
 db/init/            schema, migrations and seed data (applied in filename order)
-src/app/(app)/      authenticated pages and server actions
+src/proxy.ts        redirects requests without a valid session cookie to /login
+src/app/(app)/      signed-in pages and server actions
 src/app/api/        route handlers (audit export, health check, integrations)
 src/components/     shared UI components
 src/lib/            data access, authorization and domain logic

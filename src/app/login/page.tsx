@@ -1,6 +1,10 @@
 import { listSelectableUsers } from "@/lib/session";
 import { signInAsAction } from "@/app/session-actions";
 
+// Render per request: the picker reads the database, which is not available
+// at build time.
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   const users = await listSelectableUsers();
 

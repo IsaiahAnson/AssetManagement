@@ -57,8 +57,9 @@ function matchShortcuts(query: string): ShortcutHit[] {
 
 // Cross-entity quick search backing the global top-bar search box. Matches
 // assets (tag/serial/custodian) and people (name/email). Results are capped
-// per entity so the page stays responsive.
-export async function searchAll(query: string): Promise<SearchResults> {
+// per entity so the page stays responsive. High-sensitivity assets (firearms,
+// body armor) are left out unless includeSensitive is true.
+export async function searchAll(query: string, includeSensitive = false): Promise<SearchResults> {
   const q = query.trim();
   if (!q) return { shortcuts: [], assets: [], people: [] };
   const like = `%${q}%`;
@@ -77,13 +78,15 @@ export async function searchAll(query: string): Promise<SearchResults> {
       `SELECT a.id, a.asset_tag, a.model, a.manufacturer, a.serial_number, a.status,
               u.display_name AS custodian
          FROM assets a
+         JOIN asset_categories c ON c.id = a.category_id
          LEFT JOIN app_users u ON u.id = a.current_custodian_id
-        WHERE a.asset_tag ILIKE $1
+        WHERE (a.asset_tag ILIKE $1
            OR a.serial_number ILIKE $1
-           OR u.display_name ILIKE $1
+           OR u.display_name ILIKE $1)
+          AND ($2::boolean OR NOT (a.high_sensitivity OR c.high_sensitivity))
         ORDER BY a.asset_tag
         LIMIT ${LIMIT}`,
-      [like]
+      [like, includeSensitive]
     ),
     getPool().query<{ id: string; display_name: string; email: string; group_code: string | null }>(
       `SELECT u.id, u.display_name, u.email, g.code AS group_code

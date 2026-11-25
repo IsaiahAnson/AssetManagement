@@ -47,7 +47,7 @@ export async function getAssetDetail(id: string): Promise<AssetDetail | null> {
             c.name AS category, c.code AS category_code,
             a.office, g.name AS group_name, a.status,
             a.current_custodian_id AS custodian_id, u.display_name AS custodian,
-            a.high_sensitivity,
+            (a.high_sensitivity OR c.high_sensitivity) AS high_sensitivity,
             to_char(a.acquired_on, 'YYYY-MM-DD') AS acquired_on,
             to_char(a.disposed_on, 'YYYY-MM-DD') AS disposed_on,
             to_char(a.expected_return_on, 'YYYY-MM-DD') AS expected_return,
