@@ -2,7 +2,7 @@ import Link from "next/link";
 import { StatusTag } from "@/components/StatusTag";
 import { PrintRecordButton } from "@/components/PrintRecordButton";
 import { statusLabel, statusTone } from "@/lib/assets";
-import { canActingUserWrite } from "@/lib/authz";
+import { canActingUserWrite, actingUserHasFirearmAccess } from "@/lib/authz";
 import {
   getAssetDetail,
   listAssetCustodyEvents,
@@ -27,7 +27,11 @@ export default async function AssetDetailPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { id } = await params;
-  const asset = await getAssetDetail(id);
+  const found = await getAssetDetail(id);
+  // Users without firearms access get the same "not found" page for
+  // high-sensitivity assets as for ids that do not exist.
+  const asset =
+    found && found.highSensitivity && !(await actingUserHasFirearmAccess()) ? null : found;
 
   if (!asset) {
     return (

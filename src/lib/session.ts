@@ -1,12 +1,19 @@
 import { cookies } from "next/headers";
+import { unstable_rethrow } from "next/navigation";
 import { getPool } from "@/lib/db";
+import {
+  ACTING_USER_COOKIE,
+  getSessionSecret,
+  signSessionValue,
+  verifySessionValue
+} from "@/lib/session-token";
 
 // DEV-ONLY pseudo-session. Real access resolves through PIV/CAC + Active
 // Directory groups (out of scope for the v1 prototype, issue #32). Until then a
 // single cookie records which seeded user you are "acting as" so that role
 // behavior and audit attribution can be exercised. There is no password check
-// and this must not ship to production as-is.
-const ACTING_USER_COOKIE = "am-acting-user";
+// and this must not ship to production as-is. The cookie is HMAC-signed with
+// SESSION_SECRET so it cannot be edited by hand.
 
 export type ActingUser = {
   id: string;
@@ -25,24 +32,28 @@ export type SelectableUser = {
 
 export async function getActingUserId(): Promise<string | null> {
   // cookies() throws outside a request scope (e.g. unit/integration tests that
-  // call into the lib directly). Treat that as "no acting user" so callers fall
-  // back to their default behavior instead of crashing.
+  // call into the lib directly). Treat that as "no acting user". Next.js
+  // internal errors (such as the signal that a page must render per request)
+  // are rethrown so pages that read the session are never prerendered.
+  let raw: string | undefined;
   try {
-    return (await cookies()).get(ACTING_USER_COOKIE)?.value ?? null;
-  } catch {
+    raw = (await cookies()).get(ACTING_USER_COOKIE)?.value;
+  } catch (error) {
+    unstable_rethrow(error);
     return null;
   }
+  if (!raw) return null;
+  // A missing, unsigned or malformed cookie means signed out.
+  return verifySessionValue(raw, getSessionSecret());
 }
 
-// Resolves the current acting user: the cookie's user if present and active,
-// otherwise the default (an Asset Manager, falling back to any active user) so
-// the header and audit attribution always have someone to show.
+// Resolves the current acting user from the signed cookie. Returns null when
+// nobody is signed in or the user is no longer active.
 export async function getActingUser(): Promise<ActingUser | null> {
   const cookieId = await getActingUserId();
-  const pool = getPool();
 
   if (cookieId) {
-    const r = await pool.query<{ id: string; display_name: string; role_code: string | null; role_name: string | null }>(
+    const r = await getPool().query<{ id: string; display_name: string; role_code: string | null; role_name: string | null }>(
       `SELECT u.id, u.display_name, r.code AS role_code, r.name AS role_name
          FROM app_users u
          LEFT JOIN user_roles ur ON ur.user_id = u.id
@@ -61,23 +72,6 @@ export async function getActingUser(): Promise<ActingUser | null> {
     }
   }
 
-  const fallback = await pool.query<{ id: string; display_name: string; role_code: string | null; role_name: string | null }>(
-    `SELECT u.id, u.display_name, r.code AS role_code, r.name AS role_name
-       FROM app_users u
-       LEFT JOIN user_roles ur ON ur.user_id = u.id
-       LEFT JOIN roles r ON r.id = ur.role_id
-      WHERE u.active = true
-      ORDER BY (r.code = 'asset_manager') DESC NULLS LAST, u.display_name
-      LIMIT 1`
-  );
-  if (fallback.rowCount && fallback.rows[0]) {
-    return {
-      id: fallback.rows[0].id,
-      displayName: fallback.rows[0].display_name,
-      roleCode: fallback.rows[0].role_code,
-      roleName: fallback.rows[0].role_name ?? "No role"
-    };
-  }
   return null;
 }
 
@@ -126,10 +120,10 @@ export async function listSelectableUsers(): Promise<SelectableUser[]> {
 }
 
 export async function setActingUser(userId: string): Promise<void> {
-  (await cookies()).set(ACTING_USER_COOKIE, userId, {
+  (await cookies()).set(ACTING_USER_COOKIE, signSessionValue(userId, getSessionSecret()), {
     path: "/",
     sameSite: "lax",
-    httpOnly: false,
+    httpOnly: true,
     maxAge: 60 * 60 * 24 * 7
   });
 }

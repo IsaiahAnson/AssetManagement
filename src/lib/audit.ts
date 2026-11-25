@@ -4,9 +4,9 @@ import { getPool } from "@/lib/db";
 import { getActingUserId } from "@/lib/session";
 
 // Resolves the acting user. Real PIV/CAC auth is out of scope for the
-// prototype; until session auth lands we honor the dev "acting user" cookie
-// (set via the login picker) and otherwise attribute actions to a seeded
-// Asset Manager (falling back to any active user). Shared across modules.
+// prototype; actions are attributed to the signed-in user from the dev
+// "acting user" cookie (set via the login picker). With no signed-in user the
+// action is refused. Shared across modules.
 export async function resolveActor(
   client: PoolClient
 ): Promise<{ id: string; label: string }> {
@@ -20,20 +20,7 @@ export async function resolveActor(
       return { id: acting.rows[0].id, label: acting.rows[0].display_name };
     }
   }
-
-  const result = await client.query<{ id: string; display_name: string }>(
-    `SELECT u.id, u.display_name
-       FROM app_users u
-       LEFT JOIN user_roles ur ON ur.user_id = u.id
-       LEFT JOIN roles r ON r.id = ur.role_id
-      WHERE u.active = true
-      ORDER BY (r.code = 'asset_manager') DESC NULLS LAST, u.display_name
-      LIMIT 1`
-  );
-  if (result.rowCount === 0) {
-    throw new Error("No active user available to attribute the action to.");
-  }
-  return { id: result.rows[0].id, label: result.rows[0].display_name };
+  throw new Error("No signed-in user to attribute the action to.");
 }
 
 const ET_FORMATTER = new Intl.DateTimeFormat("en-CA", {
@@ -91,11 +78,26 @@ export async function listAuditActors(): Promise<{ id: string; label: string }[]
   return r.rows.map((x) => ({ id: x.id, label: x.label }));
 }
 
+// SQL condition that is false for audit rows about a high-sensitivity asset
+// (firearms, body armor). `alias` is the audit_log table alias.
+export function notSensitiveAuditRow(alias: string): string {
+  return `NOT (${alias}.record_type = 'asset' AND EXISTS (
+            SELECT 1 FROM assets sa JOIN asset_categories sc ON sc.id = sa.category_id
+             WHERE sa.asset_tag = ${alias}.record_id AND (sa.high_sensitivity OR sc.high_sensitivity)))`;
+}
+
 // Shared WHERE builder for audit queries (table aliased as `al`), used by both
-// the on-screen list and the CSV export so they always match.
-function buildAuditWhere(filters: AuditFilters): { clauses: string[]; params: unknown[] } {
+// the on-screen list and the CSV export so they always match. Rows about
+// high-sensitivity assets are dropped unless includeSensitive is true.
+function buildAuditWhere(
+  filters: AuditFilters,
+  includeSensitive: boolean
+): { clauses: string[]; params: unknown[] } {
   const clauses: string[] = [];
   const params: unknown[] = [];
+  if (!includeSensitive) {
+    clauses.push(notSensitiveAuditRow("al"));
+  }
   if (filters.recordType) {
     params.push(filters.recordType);
     clauses.push(`al.record_type = $${params.length}`);
@@ -128,8 +130,11 @@ export type AuditExportRow = {
 
 // Filtered rows for CSV export (no pagination), honoring the same filters as the
 // on-screen audit log.
-export async function getAuditExportRows(filters: AuditFilters = {}): Promise<AuditExportRow[]> {
-  const { clauses, params } = buildAuditWhere(filters);
+export async function getAuditExportRows(
+  filters: AuditFilters = {},
+  includeSensitive = false
+): Promise<AuditExportRow[]> {
+  const { clauses, params } = buildAuditWhere(filters, includeSensitive);
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
   const result = await getPool().query<{
     audit_number: string; created_at: Date; actor_label: string; action: string;
@@ -152,8 +157,12 @@ export async function getAuditExportRows(filters: AuditFilters = {}): Promise<Au
   }));
 }
 
-export async function listAuditEntries(filters: AuditFilters = {}, limit = 50): Promise<AuditEntry[]> {
-  const { clauses, params } = buildAuditWhere(filters);
+export async function listAuditEntries(
+  filters: AuditFilters = {},
+  limit = 50,
+  includeSensitive = false
+): Promise<AuditEntry[]> {
+  const { clauses, params } = buildAuditWhere(filters, includeSensitive);
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
   params.push(limit);
   const limitParam = params.length;

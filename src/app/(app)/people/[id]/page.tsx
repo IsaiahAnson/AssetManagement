@@ -9,6 +9,7 @@ import {
   listPersonActivity,
   type AssignedItem
 } from "@/lib/person-detail";
+import { actingUserHasFirearmAccess } from "@/lib/authz";
 
 const TABS = [
   { key: "overview", label: "Overview" },
@@ -44,11 +45,12 @@ export default async function PersonDetailPage({
   const requestedTab = (await searchParams).tab ?? "overview";
   const tab = TABS.some((t) => t.key === requestedTab) ? requestedTab : "overview";
 
+  const firearmAccess = await actingUserHasFirearmAccess();
   const [assets, accessories, consumables, activity] = await Promise.all([
-    listPersonAssets(id),
+    listPersonAssets(id, firearmAccess),
     listPersonAccessories(id),
     listPersonConsumables(id),
-    tab === "activity" ? listPersonActivity(id) : Promise.resolve([])
+    tab === "activity" ? listPersonActivity(id, 25, firearmAccess) : Promise.resolve([])
   ]);
 
   const equipment: Row[] = [

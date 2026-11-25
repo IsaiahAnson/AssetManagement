@@ -1,4 +1,6 @@
 import { getAuditExportRows } from "@/lib/audit";
+import { actingUserHasFirearmAccess } from "@/lib/authz";
+import { getActingUser } from "@/lib/session";
 
 // Escapes a value for CSV (wraps in quotes, doubles embedded quotes).
 function csv(value: unknown): string {
@@ -7,6 +9,10 @@ function csv(value: unknown): string {
 }
 
 export async function GET(request: Request) {
+  // API routes are outside the proxy, so check the session here.
+  if (!(await getActingUser())) {
+    return Response.json({ error: "Sign in required." }, { status: 401 });
+  }
   const params = new URL(request.url).searchParams;
   const filters = {
     q: params.get("q")?.trim() || undefined,
@@ -15,7 +21,7 @@ export async function GET(request: Request) {
     action: params.get("action") || undefined
   };
 
-  const rows = await getAuditExportRows(filters);
+  const rows = await getAuditExportRows(filters, await actingUserHasFirearmAccess());
 
   const header = ["Entry", "Timestamp (ET)", "Actor", "Action", "Record type", "Record", "Result"];
   const lines = rows.map((r) =>

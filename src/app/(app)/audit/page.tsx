@@ -4,6 +4,7 @@ import { FilterPanel } from "@/components/FilterPanel";
 import { buildHref } from "@/lib/querystring";
 import { roleMatrix } from "@/lib/sample-data";
 import { listAuditEntries, listAuditRecordTypes, listAuditActors, listAuditActions } from "@/lib/audit";
+import { actingUserHasFirearmAccess } from "@/lib/authz";
 
 export default async function AuditPage({
   searchParams
@@ -18,8 +19,9 @@ export default async function AuditPage({
     action: sp.action || undefined
   };
   const activeCount = [filters.q, filters.recordType, filters.actor, filters.action].filter(Boolean).length;
+  const firearmAccess = await actingUserHasFirearmAccess();
   const [auditEntries, recordTypes, actors, actions] = await Promise.all([
-    listAuditEntries(filters, 200),
+    listAuditEntries(filters, 200, firearmAccess),
     listAuditRecordTypes(),
     listAuditActors(),
     listAuditActions()

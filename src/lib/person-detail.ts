@@ -1,5 +1,5 @@
 import { getPool } from "@/lib/db";
-import { formatEastern } from "@/lib/audit";
+import { formatEastern, notSensitiveAuditRow } from "@/lib/audit";
 
 export type PersonDetail = {
   id: string;
@@ -54,16 +54,19 @@ export type AssignedItem = {
   assignedOn: string | null;
 };
 
-// Assets where this person is the current custodian.
-export async function listPersonAssets(id: string): Promise<AssignedItem[]> {
+// Assets where this person is the current custodian. High-sensitivity assets
+// are left out unless includeSensitive is true.
+export async function listPersonAssets(id: string, includeSensitive = false): Promise<AssignedItem[]> {
   const result = await getPool().query<{
     id: string; asset_tag: string; manufacturer: string | null; model: string | null; status: string;
   }>(
-    `SELECT id, asset_tag, manufacturer, model, status
-       FROM assets
-      WHERE current_custodian_id = $1 AND status <> 'retired'
-      ORDER BY asset_tag`,
-    [id]
+    `SELECT a.id, a.asset_tag, a.manufacturer, a.model, a.status
+       FROM assets a
+       JOIN asset_categories c ON c.id = a.category_id
+      WHERE a.current_custodian_id = $1 AND a.status <> 'retired'
+        AND ($2::boolean OR NOT (a.high_sensitivity OR c.high_sensitivity))
+      ORDER BY a.asset_tag`,
+    [id, includeSensitive]
   );
   return result.rows.map((r) => ({
     id: r.id,
@@ -122,17 +125,23 @@ export type PersonActivity = {
   result: string;
 };
 
-// Audit entries for actions this person performed.
-export async function listPersonActivity(id: string, limit = 25): Promise<PersonActivity[]> {
+// Audit entries for actions this person performed. Entries about
+// high-sensitivity assets are left out unless includeSensitive is true.
+export async function listPersonActivity(
+  id: string,
+  limit = 25,
+  includeSensitive = false
+): Promise<PersonActivity[]> {
   const result = await getPool().query<{
     audit_number: string; action: string; record_id: string; result: string; created_at: string;
   }>(
-    `SELECT audit_number, action, record_id, result, created_at
-       FROM audit_log
-      WHERE actor_user_id = $1
-      ORDER BY created_at DESC
+    `SELECT al.audit_number, al.action, al.record_id, al.result, al.created_at
+       FROM audit_log al
+      WHERE al.actor_user_id = $1
+        AND ($2::boolean OR ${notSensitiveAuditRow("al")})
+      ORDER BY al.created_at DESC
       LIMIT ${limit}`,
-    [id]
+    [id, includeSensitive]
   );
   return result.rows.map((r) => ({
     id: r.audit_number,

@@ -10,7 +10,11 @@ const READ_ONLY_ROLES = new Set(["read_only"]);
 
 export async function canActingUserWrite(): Promise<boolean> {
   const user = await getActingUser();
-  if (user?.roleCode && READ_ONLY_ROLES.has(user.roleCode)) {
+  // Nobody signed in means no writes.
+  if (!user) {
+    return false;
+  }
+  if (user.roleCode && READ_ONLY_ROLES.has(user.roleCode)) {
     return false;
   }
   return true;

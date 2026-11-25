@@ -1,4 +1,5 @@
 import { createSimulatedOnboarding } from "@/lib/onboarding";
+import { canActingUserWrite } from "@/lib/authz";
 
 export const runtime = "nodejs";
 
@@ -72,6 +73,10 @@ export async function GET() {
 }
 
 export async function POST() {
+  // Creates database rows, so it needs the same write check as server actions.
+  if (!(await canActingUserWrite())) {
+    return Response.json({ error: "Your role cannot make changes." }, { status: 403 });
+  }
   const at = new Date().toISOString();
 
   // The visible result of a pull: a simulated new hire arrives and their

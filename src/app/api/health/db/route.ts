@@ -15,12 +15,13 @@ export async function GET() {
       checkedAt: result.rows[0].checked_at
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown database error";
+    // Log the driver error on the server; the public response stays generic.
+    console.error("Database health check failed:", error);
 
     return Response.json(
       {
         status: "error",
-        message
+        message: "Database unavailable"
       },
       { status: 503 }
     );
